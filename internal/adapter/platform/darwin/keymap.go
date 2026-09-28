@@ -11,6 +11,7 @@ extern void keymapLayoutChangeBridge(void);
 import "C"
 
 import (
+	"slices"
 	"strings"
 	"unsafe"
 )
@@ -83,4 +84,33 @@ func SetReferenceKeyboardLayout(inputSourceID string) bool {
 	result := C.NeruSetReferenceKeyboardLayout(cLayoutID) != 0
 
 	return result
+}
+
+// KeyboardLayouts lists the enabled keyboard layouts by input source ID, as
+// general.kb_layout_to_use takes them, and the one keys are named in. The last
+// result is true when kb_layout_to_use names a layout the resolver could not
+// find, which it decides itself because it also accepts localized names. It is
+// also true when the layout it found is no longer enabled, because the
+// resolver keeps its match after the user removes that layout.
+func KeyboardLayouts() ([]string, string, bool) {
+	var names []string
+
+	if cIDs := C.NeruCopyKeyboardLayoutIDs(); cIDs != nil {
+		if ids := C.GoString(cIDs); ids != "" {
+			names = strings.Split(ids, "\n")
+		}
+
+		C.free(unsafe.Pointer(cIDs))
+	}
+
+	var reference string
+
+	if cReference := C.NeruCopyReferenceKeyboardLayoutID(); cReference != nil {
+		reference = C.GoString(cReference)
+		C.free(unsafe.Pointer(cReference))
+	}
+
+	unmatched := C.NeruReferenceKeyboardLayoutResolved() == 0 || !slices.Contains(names, reference)
+
+	return names, reference, unmatched
 }

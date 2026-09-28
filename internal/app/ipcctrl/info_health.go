@@ -59,6 +59,17 @@ func (h *InfoHandler) handleHealth(ctx context.Context, _ ipc.Command) ipc.Respo
 		hasErrors = true
 	}
 
+	if reporter, ok := h.eventTap.(ports.KeyboardLayoutReporter); ok {
+		var requested string
+		if cfg != nil {
+			requested = strings.TrimSpace(cfg.General.KBLayoutToUse)
+		}
+
+		status, found := keyboardLayoutsStatus(reporter.KeyboardLayouts(), requested)
+		components["keyboard_layouts"] = status
+		hasErrors = hasErrors || !found
+	}
+
 	for key, value := range capabilities {
 		// Skip informational sibling fields (e.g. dark_mode_detection_detail);
 		// see detailSuffix for the contract.
@@ -262,4 +273,33 @@ func capabilityStatusSupported(status string) bool {
 	capability := ports.FeatureCapability{Status: ports.FeatureStatus(status)}
 
 	return capability.Supported()
+}
+
+// keyboardLayoutsStatus renders the keyboard_layouts row: the layouts keys are
+// named against, spelled as general.kb_layout_to_use takes them, and the one
+// they are named in. It reports false when the platform could not find the
+// layout kb_layout_to_use names, which is a typo neru doctor should catch.
+func keyboardLayoutsStatus(layouts ports.KeyboardLayouts, requested string) (string, bool) {
+	if len(layouts.Names) == 0 {
+		// Doctor cannot check a forced layout here, so it does not call it ok.
+		// It does not fail on it either, because the keymap may still arrive.
+		if requested != "" {
+			return "unverified: " + requested + " (no keyboard layouts read yet)", true
+		}
+
+		return "ok (no keyboard layouts read yet)", true
+	}
+
+	list := strings.Join(layouts.Names, ", ")
+
+	if requested != "" && layouts.Unmatched {
+		return "not found: " + requested + " (layouts: " + list + ")", false
+	}
+
+	reference := layouts.Reference
+	if reference == "" {
+		reference = "the active layout"
+	}
+
+	return "ok (" + list + "; keys use " + reference + ")", true
 }
