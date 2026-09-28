@@ -42,8 +42,17 @@ const (
 	vkLWin     = 0x5B
 	vkRWin     = 0x5C
 	vkControl  = 0x11
-	vkMenu     = 0x12
-	vkShift    = 0x10
+
+	// The VK_OEM_* punctuation codes. On a US layout VK_OEM_1 through
+	// VK_OEM_3 type ; = , - . / and `, and VK_OEM_4 through VK_OEM_8 type
+	// [ \ ] and '. VK_OEM_102 is the ISO key beside the left Shift.
+	vkOEM1   = 0xBA
+	vkOEM3   = 0xC0
+	vkOEM4   = 0xDB
+	vkOEM8   = 0xDF
+	vkOEM102 = 0xE2
+	vkMenu   = 0x12
+	vkShift  = 0x10
 
 	// Function keys occupy a contiguous VK range: VK_F1 (0x70) through
 	// VK_F24 (0x87). They are handled arithmetically rather than as 24
@@ -54,8 +63,8 @@ const (
 	functionKeyPrefix = "f"
 
 	// mapvkVkToChar is MapVirtualKey's MAPVK_VK_TO_CHAR mode: translate a
-	// virtual-key code to its unshifted character for the active keyboard
-	// layout. The high bit of the result flags a dead key.
+	// virtual-key code to its unshifted character in a keyboard layout. The
+	// high bit of the result flags a dead key.
 	mapvkVkToChar = 2
 
 	// loWordMask isolates the low 16 bits; byteMask isolates the low 8 bits.
@@ -175,8 +184,9 @@ func KeyNameFromVirtualKey(virtualKey uint32) string {
 		}
 		// OEM/punctuation keys (e.g. "`", "/", "-") are layout-dependent: the
 		// same character lives on different VK codes across keyboard layouts.
-		// Translate via the active layout so hotkeys like "`" match regardless
-		// of whether the user is on a US, UK, or other layout.
+		// Translate via the reference layout (layout.go) so hotkeys like "`"
+		// match on a US, UK, or other layout, and keep matching while a
+		// non-Latin layout such as Russian is active.
 		if name := charNameFromVirtualKey(virtualKey); name != "" {
 			return name
 		}
@@ -212,10 +222,14 @@ func functionKeyVirtualKey(name string) (uint32, bool) {
 }
 
 // charNameFromVirtualKey maps a virtual-key code to its unshifted printable
-// character for the active keyboard layout, or "" if it has none (or is a dead
-// key). Letters are lowercased for consistency with the explicit letter path.
+// character in the reference layout, or "" if it has none (or is a dead key).
+// Letters are lowercased for consistency with the explicit letter path.
 func charNameFromVirtualKey(vk uint32) string {
-	ret, _, _ := procMapVirtualKeyW.Call(uintptr(vk), mapvkVkToChar)
+	ret, _, _ := procMapVirtualKeyExW.Call(uintptr(vk), mapvkVkToChar, referenceLayout())
+	if ret == 0 && isOEMVirtualKey(vk) && forgetFallbackLayout() {
+		ret, _, _ = procMapVirtualKeyExW.Call(uintptr(vk), mapvkVkToChar, referenceLayout())
+	}
+
 	if ret == 0 || ret&0x80000000 != 0 {
 		return ""
 	}
@@ -232,11 +246,22 @@ func charNameFromVirtualKey(vk uint32) string {
 	return string(keyChar)
 }
 
-// virtualKeyFromChar resolves a single character to its virtual-key code on the
-// active keyboard layout, ignoring the required shift state. Returns false when
-// the character is not reachable on the current layout.
+// isOEMVirtualKey reports whether vk is one of the VK_OEM_* punctuation codes,
+// which every Latin layout gives a character. A zero answer for one of them in
+// the reference layout means the layout is gone. For Caps Lock or a media key,
+// zero only means the key types nothing.
+func isOEMVirtualKey(vk uint32) bool {
+	return (vk >= vkOEM1 && vk <= vkOEM3) || (vk >= vkOEM4 && vk <= vkOEM8) || vk == vkOEM102
+}
+
+// virtualKeyFromChar resolves a single character to its virtual-key code in the
+// reference layout, ignoring the required shift state. Returns false when the
+// character is not reachable there.
 func virtualKeyFromChar(r rune) (uint32, bool) {
-	ret, _, _ := procVkKeyScanW.Call(uintptr(r))
+	ret, _, _ := procVkKeyScanExW.Call(uintptr(r), referenceLayout())
+	if int16(ret) == -1 && forgetFallbackLayout() {
+		ret, _, _ = procVkKeyScanExW.Call(uintptr(r), referenceLayout())
+	}
 
 	scan := int16(ret)
 	if scan == -1 {
