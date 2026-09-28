@@ -15,6 +15,8 @@ import (
 	"time"
 	"unsafe"
 
+	"go.uber.org/zap"
+
 	"github.com/y3owk1n/neru/internal/adapter/platform"
 	"github.com/y3owk1n/neru/internal/adapter/platform/linux"
 	"github.com/y3owk1n/neru/internal/domain/keyvocab"
@@ -22,8 +24,15 @@ import (
 
 const (
 	x11PollingInterval = 10 * time.Millisecond
-	x11KeyBufferSize   = 64
-	x11BitsPerByte     = 8
+
+	// x11GrabWarnAfter is how long a mode start waits for the keyboard before
+	// the tap logs a warning. A hotkey that starts a mode is still held when the tap asks
+	// for the grab, and until it comes up the server answers AlreadyGrabbed.
+	// The passive grab on that key belongs to Neru's own hotkey connection or
+	// to the window manager.
+	x11GrabWarnAfter = time.Second
+	x11KeyBufferSize = 64
+	x11BitsPerByte   = 8
 )
 
 // x11AutorepeatWarned says the refusal once: runX11 opens a connection per
@@ -74,6 +83,39 @@ func x11QueryModifierState(display *C.Display) linuxModifierState {
 	return state
 }
 
+// grabX11Keyboard takes the keyboard, retrying until the key that started the
+// mode is released or the mode ends. It has no deadline, because a user may
+// hold the hotkey as long as they like and the mode needs its keys once they
+// let go. Until the grab succeeds every key the user types goes to the focused
+// window, so the tap logs once when the wait passes x11GrabWarnAfter.
+func (et *EventTap) grabX11Keyboard(display *C.Display) bool {
+	warnAt := time.Now().Add(x11GrabWarnAfter)
+	warned := false
+
+	for {
+		status := C.neru_eventtap_grab_keyboard(display)
+		if status == C.GrabSuccess {
+			return true
+		}
+
+		if !warned && time.Now().After(warnAt) && et.logger != nil {
+			et.logger.Warn(
+				"Still waiting for the X11 keyboard; mode keys reach the focused window until it is free",
+				zap.Int("grab_status", int(status)),
+				zap.Duration("waited", x11GrabWarnAfter),
+			)
+
+			warned = true
+		}
+
+		select {
+		case <-et.stopCh:
+			return false
+		case <-time.After(x11PollingInterval):
+		}
+	}
+}
+
 func (et *EventTap) runX11() {
 	defer close(et.doneCh)
 
@@ -106,7 +148,7 @@ func (et *EventTap) runX11() {
 		})
 	}
 
-	if C.neru_eventtap_grab_keyboard(display) != C.GrabSuccess {
+	if !et.grabX11Keyboard(display) {
 		return
 	}
 	defer C.neru_eventtap_ungrab_keyboard(display)
