@@ -81,11 +81,6 @@ func (m *Manager) SetExitOnUnmatched(exit bool) {
 	m.exitOnUnmatched = exit
 }
 
-// ExitOnUnmatched returns whether exit-on-unmatched is enabled.
-func (m *Manager) ExitOnUnmatched() bool {
-	return m.exitOnUnmatched
-}
-
 // SetHints updates the current hint collection and resets the input state.
 // The caller MUST hold externalMu (when set) — see requireExternalMuHeld.
 func (m *Manager) SetHints(hints *Collection) error {
