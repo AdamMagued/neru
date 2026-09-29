@@ -148,6 +148,7 @@ func TestRouter_UnmatchedKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RouteKey: %v", err)
 	}
+
 	if result.Unmatched() {
 		t.Error("result.Unmatched() = true, want false when exitOnUnmatched is false")
 	}
@@ -160,6 +161,7 @@ func TestRouter_UnmatchedKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RouteKey: %v", err)
 	}
+
 	if result.Unmatched() {
 		t.Error("result.Unmatched() = true, want false for matching prefix 'a'")
 	}
@@ -169,6 +171,7 @@ func TestRouter_UnmatchedKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RouteKey: %v", err)
 	}
+
 	if !result.Unmatched() {
 		t.Error("result.Unmatched() = false, want true for unmatched key 'z'")
 	}

@@ -861,7 +861,9 @@ func TestSimulation_HintsRepeatJourney(t *testing.T) {
 // exits cleanly back to idle mode.
 func TestSimulation_HintsRepeatExitOnUnmatchedJourney(t *testing.T) {
 	cfg := simConfig()
-	cfg.Hotkeys.Bindings[hintsHotkey] = []string{"hints --action left_click --repeat --exit-on-unmatched"}
+	cfg.Hotkeys.Bindings[hintsHotkey] = []string{
+		"hints --action left_click --repeat --exit-on-unmatched",
+	}
 
 	save := simElement(t, "save", image.Rect(100, 100, 220, 140), "Save")
 	sim := newSimHarness(t, cfg, []*element.Element{save})

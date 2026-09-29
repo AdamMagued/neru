@@ -238,29 +238,44 @@ func TestHandleHintsModeKey_ExitOnUnmatched(t *testing.T) {
 		return handler
 	}
 
-	t.Run("when exit-on-unmatched is false, unmatched key keeps hints mode open", func(t *testing.T) {
-		t.Parallel()
-		handler := setupHandler(false)
+	t.Run(
+		"when exit-on-unmatched is false, unmatched key keeps hints mode open",
+		func(t *testing.T) {
+			t.Parallel()
 
-		handler.HandleKeyPress("z")
+			handler := setupHandler(false)
 
-		handler.mu.Lock()
-		defer handler.mu.Unlock()
-		if handler.appState.CurrentMode() != domain.ModeHints {
-			t.Fatalf("current mode = %v, want %v", handler.appState.CurrentMode(), domain.ModeHints)
-		}
-	})
+			handler.HandleKeyPress("z")
+
+			handler.mu.Lock()
+			defer handler.mu.Unlock()
+
+			if handler.appState.CurrentMode() != domain.ModeHints {
+				t.Fatalf(
+					"current mode = %v, want %v",
+					handler.appState.CurrentMode(),
+					domain.ModeHints,
+				)
+			}
+		},
+	)
 
 	t.Run("when exit-on-unmatched is true, unmatched key exits hints mode", func(t *testing.T) {
 		t.Parallel()
+
 		handler := setupHandler(true)
 
 		handler.HandleKeyPress("z")
 
 		handler.mu.Lock()
 		defer handler.mu.Unlock()
+
 		if handler.appState.CurrentMode() != domain.ModeIdle {
-			t.Fatalf("current mode = %v, want %v (exited)", handler.appState.CurrentMode(), domain.ModeIdle)
+			t.Fatalf(
+				"current mode = %v, want %v (exited)",
+				handler.appState.CurrentMode(),
+				domain.ModeIdle,
+			)
 		}
 	})
 }
