@@ -856,9 +856,9 @@ func TestSimulation_HintsRepeatJourney(t *testing.T) {
 	sim.waitMode(domain.ModeIdle)
 }
 
-// TestSimulation_HintsRepeatExitOnUnmatchedJourney covers --action left_click --repeat --exit-on-unmatched:
-// clicking a hint executes the action and re-arms hints mode, and a subsequent unmatched key
-// exits cleanly back to idle mode.
+// TestSimulation_HintsRepeatExitOnUnmatchedJourney runs hints with --action left_click
+// --repeat --exit-on-unmatched. Clicking a hint runs the action and re-activates hints
+// mode, and a later unmatched key returns to idle mode.
 func TestSimulation_HintsRepeatExitOnUnmatchedJourney(t *testing.T) {
 	cfg := simConfig()
 	cfg.Hotkeys.Bindings[hintsHotkey] = []string{

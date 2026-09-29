@@ -23,8 +23,8 @@ var HintsCmd = BuildModeCommand(ModeConfig{
   search query is empty. Hints appear only as you type a query, making
   it easier to focus on matching results.
 
-  Use --exit-on-unmatched to immediately dismiss and exit the overlay
-  when a pressed key does not match any hint prefix.
+  Use --exit-on-unmatched to exit hints mode when a pressed key does not
+  start any hint label.
 
   Use --role and --text to filter which elements get hinted:
     --role button,link           Only hint buttons and links

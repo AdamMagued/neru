@@ -43,8 +43,8 @@ type Manager struct {
 	// the "before" count on each keystroke.
 	lastFilteredLen int
 
-	// exitOnUnmatched configures the manager to retain input and skip redraw
-	// on an unmatched key so the mode can cleanly exit.
+	// exitOnUnmatched keeps the input and skips the redraw on an unmatched
+	// key, so the mode can exit without drawing first.
 	exitOnUnmatched bool
 }
 
@@ -76,7 +76,8 @@ func (m *Manager) SetUpdateCallback(callback func([]*Interface)) {
 	m.onUpdate = callback
 }
 
-// SetExitOnUnmatched configures whether the manager should exit on an unmatched key.
+// SetExitOnUnmatched sets whether HandleInput reports an unmatched key
+// instead of resetting the input.
 func (m *Manager) SetExitOnUnmatched(exit bool) {
 	m.exitOnUnmatched = exit
 }

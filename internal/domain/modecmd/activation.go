@@ -51,7 +51,7 @@ type Activation struct {
 	// HideOnEmptySearch hides every hint while the search query is empty.
 	HideOnEmptySearch *bool
 
-	// ExitOnUnmatched dismisses and exits the overlay when a key matches no hint.
+	// ExitOnUnmatched exits the mode when a key matches no hint.
 	ExitOnUnmatched *bool
 
 	// SplitWord splits detected text into word-level regions.
