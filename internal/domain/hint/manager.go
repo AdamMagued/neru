@@ -193,8 +193,8 @@ func (m *Manager) Clear() error {
 
 // HandleInput processes an input character and returns the matched hint if an exact match is found.
 // Handles backspace for input correction, filters hints by prefix, and detects exact matches.
-// Returns (hint, true, false, nil) if exact match found, (nil, false, true, nil) if unmatched and exitOnUnmatched is enabled,
-// or (nil, false, false, nil) otherwise.
+// It returns the hint and exactMatch=true on an exact match, and unmatched=true
+// when no hint matches the input and exitOnUnmatched is enabled.
 // Maintains input state and triggers overlay updates for filtered hints.
 func (m *Manager) HandleInput(key string) (*Interface, bool, bool, error) {
 	if m.hints == nil {

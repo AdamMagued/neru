@@ -97,7 +97,7 @@ func TestManager_Backspace(t *testing.T) {
 	}
 
 	// Type 'A'
-	_, _, _, err = manager.HandleInput("A")
+	err = inputErr(manager.HandleInput("A"))
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestManager_ClearReleasesSessionState(t *testing.T) {
 		t.Fatalf("SetHints: %v", err)
 	}
 
-	_, _, _, err = manager.HandleInput("A")
+	err = inputErr(manager.HandleInput("A"))
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -259,7 +259,7 @@ func TestManager_ImmediateUpdateRequiresExternalMu(t *testing.T) {
 
 	// "A" narrows to 2 hints (AA, AB) — same count as the full set (2),
 	// so this triggers immediateUpdate which should fail without the lock.
-	_, _, _, err = manager.HandleInput("A")
+	err = inputErr(manager.HandleInput("A"))
 	if !errors.Is(err, hint.ErrExternalMuNotHeld) {
 		t.Fatalf("HandleInput without externalMu: got %v, want %v", err, hint.ErrExternalMuNotHeld)
 	}
@@ -324,7 +324,7 @@ func TestManager_ImmediateUpdateSucceedsWithExternalMu(t *testing.T) {
 		t.Fatalf("SetHints: %v", err)
 	}
 	// "A" narrows to 2 hints (AA, AB) — same count → immediateUpdate.
-	_, _, _, err = manager.HandleInput("A")
+	err = inputErr(manager.HandleInput("A"))
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -359,7 +359,7 @@ func TestManager_NoMatchRepeatedUsesImmediateUpdate(t *testing.T) {
 	}
 	// First invalid key "X" → no match, resets to full set (count 2).
 	// Previous count was 2 (from SetHints), so same count → immediateUpdate.
-	_, _, _, err = manager.HandleInput("X")
+	err = inputErr(manager.HandleInput("X"))
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -369,7 +369,7 @@ func TestManager_NoMatchRepeatedUsesImmediateUpdate(t *testing.T) {
 	}
 	// Second invalid key "Z" → no match again, full set (count 2).
 	// Previous count was 2, same count → immediateUpdate (synchronous).
-	_, _, _, err = manager.HandleInput("Z")
+	err = inputErr(manager.HandleInput("Z"))
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -469,4 +469,10 @@ func TestManager_AcceptsNonLetterCharacters(t *testing.T) {
 
 	// Note: Unicode characters like é and emoji are rejected at config validation level
 	// so they won't be present in hint_characters, making this test unnecessary
+}
+
+// inputErr keeps only the error from HandleInput, without a `_, _, _ =`
+// assignment (which trips dogsled).
+func inputErr(_ *hint.Interface, _, _ bool, err error) error {
+	return err
 }
