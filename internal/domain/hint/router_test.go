@@ -143,8 +143,20 @@ func TestRouter_UnmatchedKey(t *testing.T) {
 		t.Fatalf("SetHints: %v", err)
 	}
 
+	// By default (exitOnUnmatched = false), unmatched key resets input and does not report unmatched
+	result, err := router.RouteKey("z")
+	if err != nil {
+		t.Fatalf("RouteKey: %v", err)
+	}
+	if result.Unmatched() {
+		t.Error("result.Unmatched() = true, want false when exitOnUnmatched is false")
+	}
+
+	// Enable exitOnUnmatched
+	manager.SetExitOnUnmatched(true)
+
 	// Type matching prefix "A"
-	result, err := router.RouteKey("a")
+	result, err = router.RouteKey("a")
 	if err != nil {
 		t.Fatalf("RouteKey: %v", err)
 	}

@@ -39,7 +39,7 @@ func NewRouter(manager *Manager, logger *zap.Logger) *Router {
 
 // RouteKey processes a key press and returns the routing result.
 func (r *Router) RouteKey(key string) (RouteResult, error) {
-	hint, exactMatch, err := r.manager.HandleInput(key)
+	hint, exactMatch, unmatched, err := r.manager.HandleInput(key)
 	if err != nil {
 		return RouteResult{}, err
 	}
@@ -55,7 +55,7 @@ func (r *Router) RouteKey(key string) (RouteResult, error) {
 		}, nil
 	}
 
-	if r.manager != nil && r.manager.LastInputUnmatched() {
+	if unmatched {
 		return RouteResult{
 			unmatched: true,
 		}, nil

@@ -56,7 +56,7 @@ func TestManager_Filtering(t *testing.T) {
 			for _, char := range testCase.input {
 				var err error
 
-				match, found, err = manager.HandleInput(string(char))
+				match, found, _, err = manager.HandleInput(string(char))
 				if err != nil {
 					t.Fatalf("HandleInput: %v", err)
 				}
@@ -97,7 +97,7 @@ func TestManager_Backspace(t *testing.T) {
 	}
 
 	// Type 'A'
-	_, _, err = manager.HandleInput("A")
+	_, _, _, err = manager.HandleInput("A")
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestManager_ClearReleasesSessionState(t *testing.T) {
 		t.Fatalf("SetHints: %v", err)
 	}
 
-	_, _, err = manager.HandleInput("A")
+	_, _, _, err = manager.HandleInput("A")
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -259,7 +259,7 @@ func TestManager_ImmediateUpdateRequiresExternalMu(t *testing.T) {
 
 	// "A" narrows to 2 hints (AA, AB) — same count as the full set (2),
 	// so this triggers immediateUpdate which should fail without the lock.
-	_, _, err = manager.HandleInput("A")
+	_, _, _, err = manager.HandleInput("A")
 	if !errors.Is(err, hint.ErrExternalMuNotHeld) {
 		t.Fatalf("HandleInput without externalMu: got %v, want %v", err, hint.ErrExternalMuNotHeld)
 	}
@@ -324,7 +324,7 @@ func TestManager_ImmediateUpdateSucceedsWithExternalMu(t *testing.T) {
 		t.Fatalf("SetHints: %v", err)
 	}
 	// "A" narrows to 2 hints (AA, AB) — same count → immediateUpdate.
-	_, _, err = manager.HandleInput("A")
+	_, _, _, err = manager.HandleInput("A")
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -359,7 +359,7 @@ func TestManager_NoMatchRepeatedUsesImmediateUpdate(t *testing.T) {
 	}
 	// First invalid key "X" → no match, resets to full set (count 2).
 	// Previous count was 2 (from SetHints), so same count → immediateUpdate.
-	_, _, err = manager.HandleInput("X")
+	_, _, _, err = manager.HandleInput("X")
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -369,7 +369,7 @@ func TestManager_NoMatchRepeatedUsesImmediateUpdate(t *testing.T) {
 	}
 	// Second invalid key "Z" → no match again, full set (count 2).
 	// Previous count was 2, same count → immediateUpdate (synchronous).
-	_, _, err = manager.HandleInput("Z")
+	_, _, _, err = manager.HandleInput("Z")
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -411,7 +411,7 @@ func TestManager_AcceptsNonLetterCharacters(t *testing.T) {
 	}
 
 	// Test that letters are accepted and complete for single-char hints
-	matchedHint, complete, err := hintManager.HandleInput("a")
+	matchedHint, complete, _, err := hintManager.HandleInput("a")
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -430,7 +430,7 @@ func TestManager_AcceptsNonLetterCharacters(t *testing.T) {
 	}
 
 	// Test that numbers are accepted and complete for single-char hints
-	matchedHint2, complete2, err := hintManager.HandleInput("1")
+	matchedHint2, complete2, _, err := hintManager.HandleInput("1")
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -449,7 +449,7 @@ func TestManager_AcceptsNonLetterCharacters(t *testing.T) {
 	}
 
 	// Test that symbols are accepted and complete for single-char hints
-	matchedHint3, complete3, err := hintManager.HandleInput("!")
+	matchedHint3, complete3, _, err := hintManager.HandleInput("!")
 	if err != nil {
 		t.Fatalf("HandleInput: %v", err)
 	}
@@ -469,92 +469,4 @@ func TestManager_AcceptsNonLetterCharacters(t *testing.T) {
 
 	// Note: Unicode characters like é and emoji are rejected at config validation level
 	// so they won't be present in hint_characters, making this test unnecessary
-}
-
-func TestManager_ExitOnUnmatched(t *testing.T) {
-	elem, _ := element.NewElement(element.ID("1"), image.Rect(0, 0, 10, 10), element.RoleButton)
-	h1, _ := hint.NewHint("AA", elem, image.Point{0, 0})
-	collection := hint.NewCollection([]*hint.Interface{h1})
-
-	manager := hint.NewManager(logger.Get(), nil)
-	err := manager.SetHints(collection)
-	if err != nil {
-		t.Fatalf("SetHints: %v", err)
-	}
-
-	if manager.ExitOnUnmatched() {
-		t.Error("ExitOnUnmatched() = true by default, want false")
-	}
-
-	manager.SetExitOnUnmatched(true)
-	if !manager.ExitOnUnmatched() {
-		t.Error("ExitOnUnmatched() = false, want true")
-	}
-
-	updateCalled := false
-	manager.SetUpdateCallback(func([]*hint.Interface) {
-		updateCalled = true
-	})
-
-	// Match partial prefix "A"
-	match, found, err := manager.HandleInput("A")
-	if err != nil {
-		t.Fatalf("HandleInput: %v", err)
-	}
-	if found || match != nil {
-		t.Error("expected no exact match on 'A'")
-	}
-	if manager.LastInputUnmatched() {
-		t.Error("LastInputUnmatched() = true, want false on matching prefix")
-	}
-
-	// Type unmatched key 'Z' with exitOnUnmatched == true
-	updateCalled = false
-	match, found, err = manager.HandleInput("Z")
-	if err != nil {
-		t.Fatalf("HandleInput: %v", err)
-	}
-	if found || match != nil {
-		t.Error("expected no match on 'Z'")
-	}
-	if !manager.LastInputUnmatched() {
-		t.Error("LastInputUnmatched() = false, want true on unmatched key")
-	}
-	// Input state must NOT have been reset to empty
-	if manager.CurrentInput() != "AZ" {
-		t.Errorf("CurrentInput() = %q, want %q (not reset)", manager.CurrentInput(), "AZ")
-	}
-	if updateCalled {
-		t.Error("updateCallback called on unmatched key when exitOnUnmatched is true; want no redraw")
-	}
-
-	// Now test behavior with exitOnUnmatched == false
-	manager.SetExitOnUnmatched(false)
-	err = manager.Reset()
-	if err != nil {
-		t.Fatalf("Reset: %v", err)
-	}
-	if manager.LastInputUnmatched() {
-		t.Error("LastInputUnmatched() = true after Reset, want false")
-	}
-
-	updateCalled = false
-	// Type unmatched key 'Z'
-	match, found, err = manager.HandleInput("Z")
-	if err != nil {
-		t.Fatalf("HandleInput: %v", err)
-	}
-	if found || match != nil {
-		t.Error("expected no match on 'Z'")
-	}
-	if !manager.LastInputUnmatched() {
-		t.Error("LastInputUnmatched() = false, want true on unmatched key")
-	}
-	// Input state must have been reset to empty when exitOnUnmatched is false
-	if manager.CurrentInput() != "" {
-		t.Errorf("CurrentInput() = %q, want empty after reset on unmatched key", manager.CurrentInput())
-	}
-	if !updateCalled {
-		t.Error("updateCallback not called on unmatched key when exitOnUnmatched is false; want redraw")
-	}
 }

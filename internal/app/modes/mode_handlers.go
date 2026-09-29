@@ -228,7 +228,7 @@ func (h *handlerState) handleHintsModeKey(key string) {
 		return
 	}
 
-	if hintKeyResult.Unmatched() && h.hints.Context.ExitOnUnmatched() {
+	if hintKeyResult.Unmatched() {
 		h.logger.Debug("Hints mode: Unmatched key press, exiting mode")
 		h.exitMode()
 
@@ -249,7 +249,6 @@ func (h *handlerState) handleHintsModeKey(key string) {
 		filterRoles := h.hints.Context.FilterRoles()
 		filterTextContains := h.hints.Context.FilterTextContains()
 		startWithSearch := h.hints.Context.StartWithSearch()
-		hideOnEmptySearch := h.hints.Context.HideOnEmptySearch()
 		exitOnUnmatched := h.hints.Context.ExitOnUnmatched()
 		strategyOverride := h.hints.Context.StrategyOverride()
 		captureScopeOverride := h.hints.Context.CaptureScopeOverride()
@@ -269,7 +268,6 @@ func (h *handlerState) handleHintsModeKey(key string) {
 					FilterRoles:           filterRoles,
 					FilterTextContains:    filterTextContains,
 					Search:                &startWithSearch,
-					HideOnEmptySearch:     &hideOnEmptySearch,
 					ExitOnUnmatched:       &exitOnUnmatched,
 					Strategy:              &strategyOverride,
 					CaptureScope:          &captureScopeOverride,
@@ -290,7 +288,6 @@ func (h *handlerState) handleHintsModeKey(key string) {
 					h.hints.Context.SetFilterRoles(filterRoles)
 					h.hints.Context.SetFilterTextContains(filterTextContains)
 					h.hints.Context.SetStartWithSearch(startWithSearch)
-					h.hints.Context.SetHideOnEmptySearch(hideOnEmptySearch)
 					h.hints.Context.SetExitOnUnmatched(exitOnUnmatched)
 					h.hints.Context.SetStrategyOverride(strategyOverride)
 					h.hints.Context.SetCaptureScopeOverride(captureScopeOverride)
