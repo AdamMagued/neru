@@ -470,3 +470,91 @@ func TestManager_AcceptsNonLetterCharacters(t *testing.T) {
 	// Note: Unicode characters like é and emoji are rejected at config validation level
 	// so they won't be present in hint_characters, making this test unnecessary
 }
+
+func TestManager_ExitOnUnmatched(t *testing.T) {
+	elem, _ := element.NewElement(element.ID("1"), image.Rect(0, 0, 10, 10), element.RoleButton)
+	h1, _ := hint.NewHint("AA", elem, image.Point{0, 0})
+	collection := hint.NewCollection([]*hint.Interface{h1})
+
+	manager := hint.NewManager(logger.Get(), nil)
+	err := manager.SetHints(collection)
+	if err != nil {
+		t.Fatalf("SetHints: %v", err)
+	}
+
+	if manager.ExitOnUnmatched() {
+		t.Error("ExitOnUnmatched() = true by default, want false")
+	}
+
+	manager.SetExitOnUnmatched(true)
+	if !manager.ExitOnUnmatched() {
+		t.Error("ExitOnUnmatched() = false, want true")
+	}
+
+	updateCalled := false
+	manager.SetUpdateCallback(func([]*hint.Interface) {
+		updateCalled = true
+	})
+
+	// Match partial prefix "A"
+	match, found, err := manager.HandleInput("A")
+	if err != nil {
+		t.Fatalf("HandleInput: %v", err)
+	}
+	if found || match != nil {
+		t.Error("expected no exact match on 'A'")
+	}
+	if manager.LastInputUnmatched() {
+		t.Error("LastInputUnmatched() = true, want false on matching prefix")
+	}
+
+	// Type unmatched key 'Z' with exitOnUnmatched == true
+	updateCalled = false
+	match, found, err = manager.HandleInput("Z")
+	if err != nil {
+		t.Fatalf("HandleInput: %v", err)
+	}
+	if found || match != nil {
+		t.Error("expected no match on 'Z'")
+	}
+	if !manager.LastInputUnmatched() {
+		t.Error("LastInputUnmatched() = false, want true on unmatched key")
+	}
+	// Input state must NOT have been reset to empty
+	if manager.CurrentInput() != "AZ" {
+		t.Errorf("CurrentInput() = %q, want %q (not reset)", manager.CurrentInput(), "AZ")
+	}
+	if updateCalled {
+		t.Error("updateCallback called on unmatched key when exitOnUnmatched is true; want no redraw")
+	}
+
+	// Now test behavior with exitOnUnmatched == false
+	manager.SetExitOnUnmatched(false)
+	err = manager.Reset()
+	if err != nil {
+		t.Fatalf("Reset: %v", err)
+	}
+	if manager.LastInputUnmatched() {
+		t.Error("LastInputUnmatched() = true after Reset, want false")
+	}
+
+	updateCalled = false
+	// Type unmatched key 'Z'
+	match, found, err = manager.HandleInput("Z")
+	if err != nil {
+		t.Fatalf("HandleInput: %v", err)
+	}
+	if found || match != nil {
+		t.Error("expected no match on 'Z'")
+	}
+	if !manager.LastInputUnmatched() {
+		t.Error("LastInputUnmatched() = false, want true on unmatched key")
+	}
+	// Input state must have been reset to empty when exitOnUnmatched is false
+	if manager.CurrentInput() != "" {
+		t.Errorf("CurrentInput() = %q, want empty after reset on unmatched key", manager.CurrentInput())
+	}
+	if !updateCalled {
+		t.Error("updateCallback not called on unmatched key when exitOnUnmatched is false; want redraw")
+	}
+}

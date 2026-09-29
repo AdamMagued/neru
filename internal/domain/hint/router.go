@@ -16,11 +16,17 @@ type Router struct {
 // RouteResult contains the result of routing a key press in hint mode.
 type RouteResult struct {
 	exactHint *Interface // The exact matched hint (domain hint)
+	unmatched bool       // No hint matched the input prefix
 }
 
 // ExactHint returns the exact matched hint.
 func (rr *RouteResult) ExactHint() *Interface {
 	return rr.exactHint
+}
+
+// Unmatched returns whether no hint matched the input prefix.
+func (rr *RouteResult) Unmatched() bool {
+	return rr.unmatched
 }
 
 // NewRouter creates a new hint router with the specified manager and logger.
@@ -46,6 +52,12 @@ func (r *Router) RouteKey(key string) (RouteResult, error) {
 
 		return RouteResult{
 			exactHint: hint,
+		}, nil
+	}
+
+	if r.manager != nil && r.manager.LastInputUnmatched() {
+		return RouteResult{
+			unmatched: true,
 		}, nil
 	}
 
